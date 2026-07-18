@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cipher Bench — Text Encryption & Decryption Tool</title>
+<meta name="description" content="Encrypt and decrypt text right in your browser using Caesar Shift, Vigenère, or Atbash ciphers. See exactly how each letter is mapped, with a saved history of everything you run.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔐</text></svg>">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=Spectral+SC:wght@600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="grain"></div>
+
+<header class="masthead">
+  <div class="masthead__inner">
+    <p class="eyebrow">Text Encryption &amp; Decryption</p>
+    <h1 class="masthead__title">Cipher Bench</h1>
+    <p class="masthead__subtitle">
+      Turn any message into scrambled ciphertext, then turn it back into
+      plain text again. Pick a method below, type your message, and watch
+      exactly how each letter gets swapped.
+    </p>
+    <div class="masthead__meta">
+      <span><strong>Methods</strong> Caesar · Vigenère · Atbash</span>
+      <span><strong>Status</strong> <span class="dot"></span> Runs entirely in your browser</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- HOW TO USE -->
+  <section class="howto" aria-labelledby="howto-heading">
+    <h2 id="howto-heading">How to use this page</h2>
+    <ol class="howto__list">
+      <li><strong>Pick a method</strong> — Caesar Shift, Vigenère, or Atbash — using the tabs in the workbench below.</li>
+      <li><strong>Set a key</strong> if the method needs one: a shift number for Caesar, or a word for Vigenère. Atbash needs no key at all.</li>
+      <li><strong>Type your message</strong> into the Plaintext box and press <strong>Encrypt</strong> to scramble it.</li>
+      <li><strong>Reverse it any time</strong> — paste ciphertext into the right-hand box and press <strong>Decrypt</strong> to get the original message back.</li>
+    </ol>
+    <p class="howto__note">Everything runs locally in your browser. Nothing you type is sent anywhere.</p>
+  </section>
+
+  <!-- SIGNATURE ELEMENT: rotating cipher wheel -->
+  <section class="wheel-section" aria-labelledby="wheel-heading">
+    <div class="wheel-copy">
+      <h2 id="wheel-heading">See the shift in action</h2>
+      <p>
+        The outer ring is the alphabet as you typed it. The inner ring is
+        the alphabet as it gets sent. Change the shift key below and watch
+        the inner ring turn — that turn is the whole trick behind a Caesar
+        cipher.
+      </p>
+      <div class="key-readout">
+        <span class="key-readout__label">Current shift</span>
+        <span class="key-readout__value" id="wheelShiftReadout">3</span>
+      </div>
+    </div>
+    <div class="wheel-wrap">
+      <svg id="cipherWheel" viewBox="0 0 360 360" role="img" aria-label="Rotating cipher wheel showing the Caesar shift alphabet">
+        <circle class="wheel-face wheel-face--outer" cx="180" cy="180" r="172"></circle>
+        <g id="outerLetters"></g>
+        <circle class="wheel-face wheel-face--mid" cx="180" cy="180" r="128"></circle>
+        <g id="wheelRotor">
+          <circle class="wheel-face wheel-face--inner" cx="180" cy="180" r="120"></circle>
+          <g id="innerLetters"></g>
+        </g>
+        <circle class="wheel-hub" cx="180" cy="180" r="26"></circle>
+        <text class="wheel-hub__label" x="180" y="188" text-anchor="middle">🔒</text>
+        <polygon class="wheel-pointer" points="180,4 172,26 188,26"></polygon>
+      </svg>
+    </div>
+  </section>
+
+  <!-- WORKBENCH -->
+  <section class="bench" aria-labelledby="bench-heading">
+    <h2 id="bench-heading" class="bench__title">Try it yourself</h2>
+
+    <div class="tabs" role="tablist" aria-label="Cipher method">
+      <button class="tab is-active" role="tab" aria-selected="true" data-method="caesar">Caesar Shift</button>
+      <button class="tab" role="tab" aria-selected="false" data-method="vigenere">Vigenère</button>
+      <button class="tab" role="tab" aria-selected="false" data-method="atbash">Atbash</button>
+    </div>
+
+    <div class="panel">
+
+      <div class="controls">
+        <div class="control control--caesar" data-control="caesar">
+          <label for="shiftRange">Shift key</label>
+          <div class="control__row">
+            <input type="range" id="shiftRange" min="1" max="25" value="3">
+            <input type="number" id="shiftNumber" min="1" max="25" value="3" aria-label="Shift key value">
+          </div>
+          <p class="control__hint">Each letter moves this many places forward through the alphabet.</p>
+        </div>
+
+        <div class="control control--vigenere" data-control="vigenere" hidden>
+          <label for="keywordInput">Keyword</label>
+          <input type="text" id="keywordInput" placeholder="e.g. BRASS" maxlength="24" autocomplete="off">
+          <p class="control__hint">Each letter of the keyword sets a different shift — repeats to match your message length.</p>
+        </div>
+
+        <div class="control control--atbash" data-control="atbash" hidden>
+          <p class="control__hint">Atbash has no key. A↔Z, B↔Y, C↔X — the alphabet is simply mirrored.</p>
+        </div>
+
+        <label class="checkbox">
+          <input type="checkbox" id="preserveCase" checked>
+          <span>Preserve letter case</span>
+        </label>
+      </div>
+
+      <div class="io-grid">
+        <div class="io-block">
+          <div class="io-block__head">
+            <label for="plainText">Plaintext</label>
+            <span class="char-count" id="plainCount">0 chars</span>
+          </div>
+          <textarea id="plainText" rows="5" placeholder="Type or paste the message you want to protect…" spellcheck="false"></textarea>
+          <div class="io-actions">
+            <button class="btn btn--primary" id="encryptBtn" type="button">Encrypt ↓</button>
+            <button class="btn btn--ghost" id="clearPlainBtn" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="io-connector" aria-hidden="true">
+          <span class="io-connector__arrow io-connector__arrow--down">Encrypt →</span>
+          <span class="io-connector__arrow io-connector__arrow--up">← Decrypt</span>
+        </div>
+
+        <div class="io-block">
+          <div class="io-block__head">
+            <label for="cipherText">Ciphertext</label>
+            <span class="char-count" id="cipherCount">0 chars</span>
+          </div>
+          <textarea id="cipherText" rows="5" placeholder="Encrypted output appears here — or paste ciphertext to decrypt it…" spellcheck="false"></textarea>
+          <div class="io-actions">
+            <button class="btn btn--secondary" id="decryptBtn" type="button">Decrypt ↑</button>
+            <button class="btn btn--ghost" id="copyCipherBtn" type="button">Copy</button>
+          </div>
+          <p class="io-block__hint">Decrypt always reads from this box and writes the result back into Plaintext.</p>
+        </div>
+      </div>
+
+      <p class="status" id="statusLine" role="status" aria-live="polite">Ready. Enter plaintext and press Encrypt.</p>
+    </div>
+  </section>
+
+  <!-- MAPPING TABLE -->
+  <section class="mapping" aria-labelledby="mapping-heading">
+    <h2 id="mapping-heading">Substitution Key</h2>
+    <p class="mapping__intro">The exact letter-for-letter map currently in use on the rotor above.</p>
+    <div class="mapping__table" id="mappingTable" role="table" aria-label="Letter substitution table"></div>
+  </section>
+
+  <!-- LEDGER / LOG -->
+  <section class="ledger" aria-labelledby="ledger-heading">
+    <div class="ledger__head">
+      <h2 id="ledger-heading">History</h2>
+      <button class="btn btn--ghost btn--small" id="clearLogBtn" type="button">Clear history</button>
+    </div>
+    <p class="ledger__intro">Every message you encrypt or decrypt is saved here automatically, most recent first. It stays saved even if you refresh or close this page — until you press "Clear history".</p>
+    <ol class="ledger__list" id="ledgerList">
+      <li class="ledger__empty">No operations logged yet.</li>
+    </ol>
+  </section>
+
+  <!-- LEARN PANEL -->
+  <section class="brief" aria-labelledby="brief-heading">
+    <h2 id="brief-heading">Field Notes</h2>
+    <div class="brief__grid">
+      <article>
+        <h3>Caesar Shift</h3>
+        <p>The oldest trick in the book — literally used by Julius Caesar. Every letter slides forward by a fixed number of places. Shift 3 turns A into D. It's reversible because decrypting is just shifting backward by the same amount.</p>
+      </article>
+      <article>
+        <h3>Vigenère</h3>
+        <p>A Caesar cipher that changes its shift on every letter, driven by a repeating keyword. Harder to break by frequency analysis because the same plaintext letter can encrypt to different ciphertext letters.</p>
+      </article>
+      <article>
+        <h3>Atbash</h3>
+        <p>A mirror-image substitution with no key at all — A swaps with Z, B with Y, and so on. Simple, symmetric, and its own inverse: run it twice and you're back where you started.</p>
+      </article>
+      <article>
+        <h3>Why this matters</h3>
+        <p>Modern systems (AES, RSA, TLS) do the same job — reversible obfuscation of data — with vastly more mathematical rigor. Mastering the logic here is the foundation for reading real cryptographic code later.</p>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <p>Cipher Bench — a simple, browser-based encryption and decryption tool.</p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
